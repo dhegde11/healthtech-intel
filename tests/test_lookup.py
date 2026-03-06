@@ -226,3 +226,81 @@ class TestExecuteReadFile:
         )
         assert result.startswith("ERROR")
         assert "not found" in result.lower() or "File not found" in result
+
+
+# ---------------------------------------------------------------------------
+# TestPauseTurnHandling — tests using mocked Anthropic client
+# ---------------------------------------------------------------------------
+
+import asyncio
+from unittest.mock import AsyncMock, MagicMock
+
+class TestPauseTurnHandling:
+    """
+    Verify pause_turn responses are handled correctly in research_entity_async.
+    Uses a mocked AsyncAnthropic client — no real API calls.
+    """
+
+    def _make_skill(self):
+        from lookup import Skill
+        return Skill(
+            name="researching-health-it-vendor",
+            description="",
+            mode="vendor",
+            max_tool_rounds=5,
+            prompt_template="Research {entity}.",
+        )
+
+    def _make_pause_response(self):
+        """A response with stop_reason='pause_turn' (server tools hit limit)."""
+        r = MagicMock()
+        r.stop_reason = "pause_turn"
+        r.content = [MagicMock(type="server_tool_use")]
+        return r
+
+    def _make_end_response(self):
+        """A response with stop_reason='end_turn' and a valid JSON text block."""
+        text_block = MagicMock()
+        text_block.type = "text"
+        text_block.text = '{"entity_name": "Acme", "research_notes": "ok"}'
+        r = MagicMock()
+        r.stop_reason = "end_turn"
+        r.content = [text_block]
+        return r
+
+    def test_pause_turn_causes_retry_without_user_message(self):
+        """
+        When API returns pause_turn, the loop retries with messages ending in
+        'assistant' (no extra user message). The second call gets end_turn.
+        Total: 2 create() calls.
+        """
+        from lookup import research_entity_async
+
+        skill = self._make_skill()
+        client = MagicMock()
+        client.messages.create = AsyncMock(
+            side_effect=[self._make_pause_response(), self._make_end_response()]
+        )
+
+        result = asyncio.run(research_entity_async(client, "Acme", skill, "claude-sonnet-4-6"))
+
+        assert client.messages.create.call_count == 2
+        assert result["entity_name"] == "Acme"
+
+        # On the second call, the messages list must end with the assistant
+        # message from the pause_turn round (no extra user/tool_result appended).
+        second_call_messages = client.messages.create.call_args_list[1][1]["messages"]
+        assert second_call_messages[-1]["role"] == "assistant"
+
+    def test_end_turn_on_first_call_returns_immediately(self):
+        """When first response is end_turn, create() is called exactly once."""
+        from lookup import research_entity_async
+
+        skill = self._make_skill()
+        client = MagicMock()
+        client.messages.create = AsyncMock(side_effect=[self._make_end_response()])
+
+        result = asyncio.run(research_entity_async(client, "Acme", skill, "claude-sonnet-4-6"))
+
+        assert client.messages.create.call_count == 1
+        assert result["entity_name"] == "Acme"

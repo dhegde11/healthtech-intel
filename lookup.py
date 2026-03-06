@@ -262,6 +262,11 @@ async def discover_vendors_via_llm(query: str, model: str) -> list[str]:
             return [c.strip() for c in companies if c.strip()]
 
         messages.append({"role": "assistant", "content": response.content})
+
+        # pause_turn: server-side tools hit iteration limit. Resume automatically.
+        if response.stop_reason == "pause_turn":
+            continue
+
         # web_search, web_fetch, and code_execution are server-side: the API
         # executes them automatically and embeds results as server_tool_use blocks.
         # No client-side tool_result handling is needed for discovery.
@@ -316,6 +321,11 @@ async def research_entity_async(
             return parse_json_response(text, entity_name)
 
         messages.append({"role": "assistant", "content": response.content})
+
+        # pause_turn: server-side tools hit their iteration limit.
+        # Re-send without a new user message — server resumes automatically.
+        if response.stop_reason == "pause_turn":
+            continue
 
         # web_search, web_fetch, and code_execution are server-side: the API runs
         # them automatically (server_tool_use blocks). read_file is client-side:
