@@ -12,10 +12,11 @@ A market intelligence tool for the health IT ecosystem with three skills:
 
 ```mermaid
 flowchart LR
-    A["Natural language query<br/>or input CSV"] --> B["Discovery<br/>(optional)"]
+    A["Natural language query"] -->|discover| B["company list"]
     B --> C["Research loop<br/>one context window per entity"]
-    C --> D["results.csv<br/>clean values"]
-    C --> E["results_sources.csv<br/>values + source URLs + confidence"]
+    D["CSV input"] --> C
+    C --> E["results.csv<br/>clean values"]
+    C --> F["results_sources.csv<br/>values + source URLs + confidence"]
 ```
 
 Three ways to use this tool:
