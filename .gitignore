@@ -18,6 +18,13 @@ discovered_competitors.csv
 # Environment
 .env
 .env.*
+!.env.example
 
 # OS
 .DS_Store
+
+# Claude Code local settings (personal permissions, not project config)
+.claude/settings.local.json
+
+# Internal planning docs
+docs/plans/
