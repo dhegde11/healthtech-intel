@@ -13,7 +13,7 @@ A market intelligence tool for the health IT ecosystem with three skills:
 ```mermaid
 flowchart LR
     A["Natural language query"] -->|discover| B["company list"]
-    B --> C["Research loop<br/>one context window per entity"]
+    B --> C["Research loop<br/>with one context window per entity"]
     D["CSV input"] --> C
     C --> E["results.csv<br/>clean values"]
     C --> F["results_sources.csv<br/>values + source URLs + confidence"]
@@ -25,7 +25,7 @@ Three ways to use this tool:
 |---|---|
 | **Coding assistant discovery agent** | Build a competitor list from natural language, iteratively |
 | **Coding assistant research skill** | Profile a single company or health system, interactively |
-| **CLI batch runner** (`lookup.py`) | CSV → CSV at any scale |
+| **CLI batch runner** (`research.py`) | CSV → CSV at any scale |
 
 The same skill files (`.claude/skills/`) drive both the coding assistant and CLI. A single edit to a skill propagates to both.
 
@@ -47,18 +47,18 @@ pip install -r requirements.txt
 export ANTHROPIC_API_KEY=sk-ant-...
 
 # Discover competitors via natural language, then profile them
-python lookup.py --skill researching-health-it-vendor \
+python research.py --skill researching-health-it-vendor \
   --discover-query "AI scribe competitors to Nuance" \
   --output results.csv
 
 # Profile vendors from a known list
-python lookup.py --skill researching-health-it-vendor --input sample_vendors.csv --output results.csv
+python research.py --skill researching-health-it-vendor --input sample_vendors.csv --output results.csv
 
 # Profile health systems from a list
-python lookup.py --skill researching-health-system --input sample_health_systems.csv --output results.csv
+python research.py --skill researching-health-system --input sample_health_systems.csv --output results.csv
 
 # Discover all hospitals in California from CMS public data, then profile them
-python lookup.py --skill researching-health-system --discover --state CA --output ca_results.csv
+python research.py --skill researching-health-system --discover --state CA --output ca_results.csv
 ```
 
 ### Use your coding assistant (conversational)
@@ -72,7 +72,7 @@ Find me AI scribe competitors to Nuance
 The agent will propose a list, let you refine it ("remove Nuance itself", "add Suki", "only keep Series B+"), then save `discovered_competitors.csv`. Follow up with:
 
 ```bash
-python lookup.py --skill researching-health-it-vendor \
+python research.py --skill researching-health-it-vendor \
   --input discovered_competitors.csv \
   --output results.csv
 ```
@@ -197,4 +197,4 @@ Use `--yes` to skip the confirmation prompt in CI or scripted workflows.
 
 For design decisions — why Python over an LLM orchestrator, how context isolation works, source priority per field, and how to tune research depth — see [Architecture & Design Decisions](docs/design.md).
 
-If you use OpenAI or Gemini instead of Anthropic, see [Using with other AI assistants](docs/other-assistants.md) to adapt `lookup.py` to another provider.
+If you use OpenAI or Gemini instead of Anthropic, see [Using with other AI assistants](docs/other-assistants.md) to adapt `research.py` to another provider.

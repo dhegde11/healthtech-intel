@@ -25,11 +25,11 @@ import re
 import sys
 from pathlib import Path
 
-# Make lookup importable from project root
+# Make research importable from project root
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from anthropic import AsyncAnthropic
-from lookup import (
+from research import (
     load_skill,
     parse_json_response,
 )
@@ -88,7 +88,7 @@ def _load_cache(skill_name, entity_name):
 
 
 # ---------------------------------------------------------------------------
-# Main research loop (same logic as lookup.py but with caching)
+# Main research loop (same logic as research.py but with caching)
 # ---------------------------------------------------------------------------
 
 async def research_with_cache(entity_name: str, skill_name: str, model: str):

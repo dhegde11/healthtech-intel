@@ -23,7 +23,7 @@ body:
     attributes:
       label: Area
       options:
-        - lookup.py (CLI / batch runner)
+        - research.py (CLI / batch runner)
         - Skill prompt (researching-health-system)
         - Skill prompt (researching-health-it-vendor)
         - Skill prompt (discovering-health-it-competitors)

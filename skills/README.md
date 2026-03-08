@@ -21,4 +21,4 @@ Copy the prompt content (below the YAML frontmatter) and paste it into your assi
 YAML frontmatter notes:
 - `name` / `description` — informational, for Claude Code's skill registry
 - `max_tool_rounds` — tells the Claude Code runner how many search rounds to allow; ignore for other assistants
-- `mode` — used by `lookup.py` internally; ignore for other assistants
+- `mode` — used by `research.py` internally; ignore for other assistants

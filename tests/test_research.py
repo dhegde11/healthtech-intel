@@ -1,5 +1,5 @@
 """
-Unit tests for lookup.py pure Python functions.
+Unit tests for research.py pure Python functions.
 No API calls required — all tests run offline.
 """
 
@@ -10,10 +10,10 @@ from pathlib import Path
 
 import pytest
 
-# Make lookup importable from the project root
+# Make research importable from the project root
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from lookup import (
+from research import (
     SKILL_FIELDS,
     SKILL_OUTPUT_SCHEMAS,
     _execute_read_file,
@@ -218,7 +218,7 @@ class TestExecuteReadFile:
         assert "restricted" in result.lower() or ".claude/skills" in result
 
     def test_relative_traversal_blocked(self):
-        result = _execute_read_file(".claude/skills/../../lookup.py")
+        result = _execute_read_file(".claude/skills/../../research.py")
         assert result.startswith("ERROR")
 
     def test_nonexistent_file_returns_error(self):
@@ -243,7 +243,7 @@ class TestPauseTurnHandling:
     """
 
     def _make_skill(self):
-        from lookup import Skill
+        from research import Skill
         return Skill(
             name="researching-health-it-vendor",
             description="",
@@ -275,7 +275,7 @@ class TestPauseTurnHandling:
         'assistant' (no extra user message). The second call gets end_turn.
         Total: 2 create() calls.
         """
-        from lookup import research_entity_async
+        from research import research_entity_async
 
         skill = self._make_skill()
         client = MagicMock()
@@ -296,7 +296,7 @@ class TestPauseTurnHandling:
 
     def test_end_turn_on_first_call_returns_immediately(self):
         """When first response is end_turn, create() is called exactly once."""
-        from lookup import research_entity_async
+        from research import research_entity_async
 
         skill = self._make_skill()
         client = MagicMock()
@@ -322,7 +322,7 @@ class TestCachedPromptStructure:
         """
         import asyncio
         from unittest.mock import AsyncMock, MagicMock
-        from lookup import research_entity_async, Skill
+        from research import research_entity_async, Skill
 
         skill = Skill(
             name="researching-health-it-vendor",
@@ -359,7 +359,7 @@ class TestCachedPromptStructure:
         """
         import asyncio
         from unittest.mock import AsyncMock, MagicMock
-        from lookup import research_entity_async, Skill
+        from research import research_entity_async, Skill
 
         skill = Skill(
             name="researching-health-it-vendor",
@@ -396,7 +396,7 @@ class TestCachedPromptStructure:
         """research_entity_async builds a two-block user message with cache_control on block 0."""
         import asyncio
         from unittest.mock import AsyncMock, MagicMock
-        from lookup import research_entity_async, Skill
+        from research import research_entity_async, Skill
 
         skill = Skill(
             name="researching-health-it-vendor",
@@ -472,7 +472,7 @@ class TestOutputSchemas:
         """research_entity_async passes output_config with the correct schema to create()."""
         import asyncio
         from unittest.mock import AsyncMock, MagicMock
-        from lookup import research_entity_async, Skill
+        from research import research_entity_async, Skill
 
         skill = Skill(
             name="researching-health-it-vendor",

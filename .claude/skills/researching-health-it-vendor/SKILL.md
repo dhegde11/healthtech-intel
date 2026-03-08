@@ -20,7 +20,7 @@ Use the web_search and web_fetch tools to find accurate, sourced data.
 
 If you are uncertain about allowed values for a field, confidence calibration rules,
 or which sources to check first, load the relevant reference on demand using whatever
-file-reading tool is available (read_file in lookup.py, Read in Claude Code):
+file-reading tool is available (read_file in research.py, Read in Claude Code):
 - .claude/skills/researching-health-it-vendor/references/field-definitions.md — enum values, boolean rules, confidence levels
 - .claude/skills/researching-health-it-vendor/references/source-priority.md — which URLs/databases to check per field
 

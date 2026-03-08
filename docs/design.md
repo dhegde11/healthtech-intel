@@ -19,7 +19,7 @@ Requires `ANTHROPIC_API_KEY` — set it as an environment variable before runnin
 |---|---|---|
 | **Claude Code discovery agent** | Build a competitor list from natural language, iteratively | Invoke `health-it-vendor-discoverer` agent in Claude Code |
 | **Claude Code research skill** | Profile a single company or health system, interactive | Invoke `researching-health-it-vendor` or `researching-health-system` skill in Claude Code |
-| **CLI batch** | CSV → CSV at any scale, or discover + research in one command | `python lookup.py --skill ... --input ... --output ...` |
+| **CLI batch** | CSV → CSV at any scale, or discover + research in one command | `python research.py --skill ... --input ... --output ...` |
 
 The same skill files (`.claude/skills/`) drive both Claude Code and CLI. Claude Code
 invokes them interactively; Python loads them as prompt templates for batch runs.
@@ -28,7 +28,7 @@ invokes them interactively; Python loads them as prompt templates for batch runs
 
 ```
 healthtech-intel/
-├── lookup.py                          # Python orchestrator — CLI batch runner
+├── research.py                          # Python orchestrator — CLI batch runner
 ├── requirements.txt                   # anthropic>=0.40.0, pyyaml>=6.0
 ├── sample_vendors.csv                 # Sample health IT vendor names
 ├── sample_health_systems.csv          # Sample health system names
@@ -74,7 +74,7 @@ Input CSV (entity_name column)
   —or—  CMS discovery (--discover --state XX)
   —or—  Vendor discovery output from Phase 1
     ↓
-lookup.py loads skill file from .claude/skills/<skill>/SKILL.md
+research.py loads skill file from .claude/skills/<skill>/SKILL.md
     ↓
 Cost + runtime estimate shown — user must confirm before any API call
     ↓
@@ -114,7 +114,7 @@ corrupt the next.
 ### Skills live in `.claude/skills/` — not in Python
 The skill files (SKILL.md) are the source of truth for the research prompt and output
 schema. Both interfaces read from the same file: Claude Code invokes it interactively;
-`lookup.py` loads it as a prompt template for batch runs. A single edit to SKILL.md
+`research.py` loads it as a prompt template for batch runs. A single edit to SKILL.md
 propagates to both. No duplication.
 
 ### Progressive disclosure for reference files
@@ -131,7 +131,7 @@ and is expensive to discover and correct later.
 
 ### Flush after every entity
 Both output CSVs are flushed row-by-row immediately after each entity completes
-([lookup.py:344-345](../lookup.py#L344-L345)). A mid-run crash — network timeout,
+([research.py:344-345](../research.py#L344-L345)). A mid-run crash — network timeout,
 API error, Ctrl+C — preserves every result written so far. Without this, the output
 buffers wouldn't be written until the process exits cleanly.
 
@@ -154,14 +154,14 @@ mode makes logs readable and prevents rate limits entirely. The `--delay` flag (
 1 second) adds breathing room between entities. Set `--delay 0` to remove it.
 
 ### `read_file` restricted to `.claude/skills/`
-The client-side `read_file` tool ([lookup.py:165-184](../lookup.py#L165-L184)) whitelists
+The client-side `read_file` tool ([research.py:165-184](../research.py#L165-L184)) whitelists
 only the skills directory. The model can load its own reference documents but cannot
 read arbitrary filesystem paths — preventing accidental exposure of credentials, configs,
 or other local files if the model is ever prompted adversarially through a web page it fetches.
 
 ### Cost gate before any API call
 The CLI always prints an estimate and requires confirmation before calling the API
-([lookup.py:565-587](../lookup.py#L565-L587)). This makes cost visible and intentional.
+([research.py:565-587](../research.py#L565-L587)). This makes cost visible and intentional.
 `--yes` disables it for CI. `--max-entities` provides a hard cap as a secondary guard.
 
 ### Python as orchestrator, not an LLM
@@ -223,7 +223,7 @@ Accepts a natural language query and uses the `discovering-health-it-competitors
 skill to find candidate companies via web search:
 
 ```bash
-python lookup.py \
+python research.py \
   --skill researching-health-it-vendor \
   --discover-query "Epic-integrated RCM vendors that have raised Series B+" \
   --output results.csv \
@@ -248,7 +248,7 @@ to a full research run.
 feeds those hospital names into the research loop.
 
 ```bash
-python lookup.py --skill researching-health-system --discover --state CA --output ca_results.csv
+python research.py --skill researching-health-system --discover --state CA --output ca_results.csv
 ```
 
 This enables prospecting an entire state's hospital landscape without maintaining

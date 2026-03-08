@@ -18,7 +18,7 @@ If the user provides a list of companies or a CSV file path, inform them that
 batch processing should be run via the CLI:
 
 ```
-python lookup.py --skill researching-health-it-vendor --input companies.csv --output results.csv
+python research.py --skill researching-health-it-vendor --input companies.csv --output results.csv
 ```
 
 For a single company, proceed with the skill directly.

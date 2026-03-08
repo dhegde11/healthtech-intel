@@ -14,13 +14,13 @@ Usage:
     export ANTHROPIC_API_KEY=sk-ant-...
 
     # Profile health IT vendors
-    python lookup.py --skill researching-health-it-vendor --input vendors.csv --output results.csv
+    python research.py --skill researching-health-it-vendor --input vendors.csv --output results.csv
 
     # Profile health systems
-    python lookup.py --skill researching-health-system --input systems.csv --output results.csv
+    python research.py --skill researching-health-system --input systems.csv --output results.csv
 
     # Discover health systems by state (seeds from CMS public data)
-    python lookup.py --skill researching-health-system --discover --state CA --output results.csv
+    python research.py --skill researching-health-system --discover --state CA --output results.csv
 """
 
 import argparse
