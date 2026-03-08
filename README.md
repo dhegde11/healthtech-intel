@@ -6,8 +6,6 @@ A market intelligence tool for the health IT ecosystem with three skills:
 - **Vendor research** — Profile health IT companies for competitive analysis. Who are they, what do they sell, who have they sold to, how are they funded, and what is their regulatory status?
 - **Health system research** — Profile hospitals and health systems for BD prospecting. Built-in discovery by US state — no input list needed. A free, open-source alternative to [Definitive Healthcare](https://www.definitivehc.com/), powered by the public CMS API.
 
----
-
 ## Architecture
 
 ```mermaid
@@ -29,13 +27,9 @@ Three ways to use this tool:
 
 The same skill files (`.claude/skills/`) drive both the coding assistant and CLI. A single edit to a skill propagates to both.
 
----
-
 ## Useful for
 
 BD teams, competitive intelligence analysts, and market researchers in health IT who need structured, source-cited data without a Definitive Healthcare subscription.
-
----
 
 ## Quickstart
 
@@ -86,8 +80,6 @@ Use the researching-health-it-vendor skill to profile Abridge
 ```
 Use the researching-health-system skill to profile Mayo Clinic
 ```
-
----
 
 ## Output
 
@@ -147,8 +139,6 @@ cio_name, geographic_region
 | `innovation_program` | true / false |
 | `geographic_region` | Northeast / Southeast / Midwest / Southwest / West |
 
----
-
 ## CLI flags
 
 | Flag | Default | Description |
@@ -165,15 +155,11 @@ cio_name, geographic_region
 | `--max-entities` | — | Safety cap on entity count. Useful for test runs. |
 | `--yes` | false | Skip the cost confirmation prompt. |
 
----
-
 ## Requirements
 
 - `ANTHROPIC_API_KEY` — set in environment before running
 - `anthropic>=0.40.0`
 - `pyyaml>=6.0`
-
----
 
 ## Cost
 
@@ -190,8 +176,6 @@ The CLI shows an estimate and requires confirmation before any API call.
 > Prices above are estimates only. Model pricing changes frequently. Always check [anthropic.com/pricing](https://anthropic.com/pricing) before large runs.
 
 Use `--yes` to skip the confirmation prompt in CI or scripted workflows.
-
----
 
 ## Further reading
 
