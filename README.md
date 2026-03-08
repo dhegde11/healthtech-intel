@@ -31,7 +31,7 @@ The same skill files (`.claude/skills/`) drive both the coding assistant and CLI
 
 ---
 
-## Who it's for
+## Useful for
 
 BD teams, competitive intelligence analysts, and market researchers in health IT who need structured, source-cited data without a Definitive Healthcare subscription.
 
@@ -89,7 +89,7 @@ Use the researching-health-system skill to profile Mayo Clinic
 
 ---
 
-## What you get
+## Output
 
 Every run writes two CSVs:
 
@@ -161,7 +161,7 @@ The CLI shows an estimate and requires confirmation before any API call.
 | 10 | ~$1.50 – $5.00 |
 | 100 | ~$15 – $50 |
 
-> Prices above are estimates only — model pricing changes. Always check [anthropic.com/pricing](https://anthropic.com/pricing) before large runs.
+> Prices above are estimates only. Model pricing changes frequently. Always check [anthropic.com/pricing](https://anthropic.com/pricing) before large runs.
 
 Use `--yes` to skip the confirmation prompt in CI or scripted workflows.
 
@@ -195,5 +195,6 @@ Use `--yes` to skip the confirmation prompt in CI or scripted workflows.
 
 ## Further reading
 
-- [Architecture & Design Decisions](docs/design.md) — how it works under the hood
-- [Using with other AI assistants](docs/other-assistants.md) — adapting `lookup.py` to OpenAI or Gemini
+For design decisions — why Python over an LLM orchestrator, how context isolation works, source priority per field, and how to tune research depth — see [Architecture & Design Decisions](docs/design.md).
+
+If you use OpenAI or Gemini instead of Anthropic, see [Using with other AI assistants](docs/other-assistants.md) to adapt `lookup.py` to another provider.
