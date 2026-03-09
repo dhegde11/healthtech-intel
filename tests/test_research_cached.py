@@ -25,14 +25,20 @@ import re
 import sys
 from pathlib import Path
 
-# Make research importable from project root
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# healthtech-intel.py has a hyphen so standard import doesn't work; use importlib
+import importlib.util
+
+_spec = importlib.util.spec_from_file_location(
+    "healthtech_intel",
+    Path(__file__).parent.parent / "healthtech-intel.py",
+)
+_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
+
+load_skill = _mod.load_skill
+parse_json_response = _mod.parse_json_response
 
 from anthropic import AsyncAnthropic
-from research import (
-    load_skill,
-    parse_json_response,
-)
 
 CACHE_DIR = Path(__file__).parent.parent / ".cache"
 
@@ -88,7 +94,7 @@ def _load_cache(skill_name, entity_name):
 
 
 # ---------------------------------------------------------------------------
-# Main research loop (same logic as research.py but with caching)
+# Main research loop (same logic as healthtech-intel.py but with caching)
 # ---------------------------------------------------------------------------
 
 async def research_with_cache(entity_name: str, skill_name: str, model: str):
