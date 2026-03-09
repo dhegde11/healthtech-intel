@@ -19,7 +19,7 @@ Requires `ANTHROPIC_API_KEY` — set it as an environment variable before runnin
 |---|---|---|
 | **Claude Code discovery agent** | Build a competitor list from natural language, iteratively | Invoke `health-it-vendor-discoverer` agent in Claude Code |
 | **Claude Code research skill** | Profile a single company or health system, interactive | Invoke `researching-health-it-vendor` or `researching-health-system` skill in Claude Code |
-| **CLI batch** | CSV → CSV at any scale, or discover + research in one command | `python research.py --skill ... --input ... --output ...` |
+| **CLI batch** | CSV → CSV at any scale, or discover + research in one command | `python healthtech-intel.py research vendor --input ... --output ...` |
 
 The same skill files (`.claude/skills/`) drive both Claude Code and CLI. Claude Code
 invokes them interactively; Python loads them as prompt templates for batch runs.
@@ -28,7 +28,7 @@ invokes them interactively; Python loads them as prompt templates for batch runs
 
 ```
 healthtech-intel/
-├── research.py                          # Python orchestrator — CLI batch runner
+├── healthtech-intel.py                  # Python orchestrator — CLI batch runner
 ├── requirements.txt                   # anthropic>=0.40.0, pyyaml>=6.0
 ├── sample_vendors.csv                 # Sample health IT vendor names
 ├── sample_health_systems.csv          # Sample health system names
@@ -56,7 +56,7 @@ healthtech-intel/
 
 **Phase 1 — Discovery** (vendor research only, optional):
 ```
-Natural language query (--discover-query or Claude Code UI)
+Natural language query (interactive prompt or Claude Code UI)
     ↓
 discovering-health-it-competitors skill
     ↓
@@ -71,10 +71,10 @@ Returns JSON list of company names
 **Phase 2 — Research** (all skills):
 ```
 Input CSV (entity_name column)
-  —or—  CMS discovery (--discover --state XX)
+  —or—  CMS discovery (discover health-system --state XX)
   —or—  Vendor discovery output from Phase 1
     ↓
-research.py loads skill file from .claude/skills/<skill>/SKILL.md
+healthtech-intel.py loads skill file from .claude/skills/<skill>/SKILL.md
     ↓
 Cost + runtime estimate shown — user must confirm before any API call
     ↓
@@ -114,7 +114,7 @@ corrupt the next.
 ### Skills live in `.claude/skills/` — not in Python
 The skill files (SKILL.md) are the source of truth for the research prompt and output
 schema. Both interfaces read from the same file: Claude Code invokes it interactively;
-`research.py` loads it as a prompt template for batch runs. A single edit to SKILL.md
+`healthtech-intel.py` loads it as a prompt template for batch runs. A single edit to SKILL.md
 propagates to both. No duplication.
 
 ### Progressive disclosure for reference files
@@ -131,7 +131,7 @@ and is expensive to discover and correct later.
 
 ### Flush after every entity
 Both output CSVs are flushed row-by-row immediately after each entity completes
-([research.py:344-345](../research.py#L344-L345)). A mid-run crash — network timeout,
+([healthtech-intel.py:344-345](../healthtech-intel.py#L344-L345)). A mid-run crash — network timeout,
 API error, Ctrl+C — preserves every result written so far. Without this, the output
 buffers wouldn't be written until the process exits cleanly.
 
@@ -148,21 +148,21 @@ hit Anthropic rate limits (429). At 20 concurrent workers, a mis-specified input
 exhaust significant API budget before you can interrupt the run. 5 is conservative enough
 to rarely rate-limit while still being fast: 50 companies completes in ~7 minutes.
 
-### Sequential mode (`--concurrency 1`) with inter-entity delay
+### Sequential mode (`--concurrency 1`)
 When debugging or running on a trial API key with tight per-minute limits, sequential
-mode makes logs readable and prevents rate limits entirely. The `--delay` flag (default
-1 second) adds breathing room between entities. Set `--delay 0` to remove it.
+mode makes logs readable and prevents rate limits entirely. Rate limit errors are handled
+automatically with exponential backoff retries.
 
 ### `read_file` restricted to `.claude/skills/`
-The client-side `read_file` tool ([research.py:165-184](../research.py#L165-L184)) whitelists
+The client-side `read_file` tool ([healthtech-intel.py:165-184](../healthtech-intel.py#L165-L184)) whitelists
 only the skills directory. The model can load its own reference documents but cannot
 read arbitrary filesystem paths — preventing accidental exposure of credentials, configs,
 or other local files if the model is ever prompted adversarially through a web page it fetches.
 
 ### Cost gate before any API call
 The CLI always prints an estimate and requires confirmation before calling the API
-([research.py:565-587](../research.py#L565-L587)). This makes cost visible and intentional.
-`--yes` disables it for CI. `--max-entities` provides a hard cap as a secondary guard.
+([healthtech-intel.py:565-587](../healthtech-intel.py#L565-L587)). This makes cost visible and intentional.
+`--yes` disables it for CI.
 
 ### Python as orchestrator, not an LLM
 
@@ -187,8 +187,8 @@ the open-ended "find me candidates" phase and produces a CSV; the Python orchest
 handles the deterministic "research each entity in depth" phase. This keeps Python's
 guarantees where they matter while adding LLM flexibility where it's needed.
 Both skills now implement this:
-- Health systems: `--discover --state XX` seeds from CMS public data
-- Vendors: `--discover-query "..."` seeds via the `discovering-health-it-competitors` skill
+- Health systems: `discover health-system --state XX` seeds from CMS public data
+- Vendors: `discover vendor` (interactive query) seeds via the `discovering-health-it-competitors` skill
 
 ---
 
@@ -217,21 +217,23 @@ See `.claude/skills/*/references/source-priority.md` for field-by-field source g
 Both skills support a discovery phase that seeds the entity list without requiring
 a pre-built CSV.
 
-### Vendor discovery — LLM-powered (`--discover-query`)
+### Vendor discovery — LLM-powered (`discover vendor`)
 
-Accepts a natural language query and uses the `discovering-health-it-competitors`
-skill to find candidate companies via web search:
+Prompts for a natural language query and uses the `discovering-health-it-competitors`
+skill to find candidate companies via web search. Use `discover` to write a list to CSV
+first, or `pipeline` to discover and research in one shot:
 
 ```bash
-python research.py \
-  --skill researching-health-it-vendor \
-  --discover-query "Epic-integrated RCM vendors that have raised Series B+" \
-  --output results.csv \
-  --max-entities 10    # recommended for first runs
+# Two-step: discover then research
+python healthtech-intel.py discover vendor --output vendors.csv
+python healthtech-intel.py research vendor --input vendors.csv --output results.csv
+
+# One-shot: discover + research (interactive query prompt)
+python healthtech-intel.py pipeline vendor --output results.csv
 ```
 
 The discovery phase runs first (~30–60 seconds), prints the discovered company list
-and a brief rationale, then flows immediately into the full research pipeline. The
+and a brief rationale, then flows into the full research pipeline. The
 cost gate covers both phases.
 
 Discovery sources: CB Insights market maps, KLAS rankings, HIMSS exhibitor lists,
@@ -241,14 +243,15 @@ Crunchbase category searches, Rock Health reports, analyst roundups.
 `health-it-vendor-discoverer` agent lets you refine the list before committing
 to a full research run.
 
-### Health system discovery — CMS public data (`--discover --state`)
+### Health system discovery — CMS public data (`discover health-system`)
 
-`--discover --state XX` downloads the CMS Hospital General Information dataset
-(~6,000 hospitals, publicly available) and filters to the requested state, then
-feeds those hospital names into the research loop.
+`discover health-system --state XX` downloads the CMS Hospital General Information dataset
+(~6,000 hospitals, publicly available) and filters to the requested state, writing a CSV
+of hospital names ready for the research pipeline.
 
 ```bash
-python research.py --skill researching-health-system --discover --state CA --output ca_results.csv
+python healthtech-intel.py discover health-system --state CA --output ca_hospitals.csv
+python healthtech-intel.py research health-system --input ca_hospitals.csv --output ca_results.csv
 ```
 
 This enables prospecting an entire state's hospital landscape without maintaining
