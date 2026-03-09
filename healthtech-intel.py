@@ -925,11 +925,6 @@ def main():
         default=None,
         help="Output CSV path (default: <state>-health-systems.csv).",
     )
-    dhs.add_argument(
-        "--model",
-        default=DEFAULT_MODEL,
-        help=f"Anthropic model to use (default: {DEFAULT_MODEL}).",
-    )
 
     # -------------------------------------------------------------------------
     # research
@@ -1005,10 +1000,6 @@ def main():
 
     args = parser.parse_args()
 
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("ERROR: ANTHROPIC_API_KEY environment variable is not set.", file=sys.stderr)
-        sys.exit(1)
-
     # -------------------------------------------------------------------------
     # Infer skill name from target subcommand
     # -------------------------------------------------------------------------
@@ -1022,6 +1013,9 @@ def main():
     # -------------------------------------------------------------------------
     if args.command == "discover":
         if args.target == "vendor":
+            if not os.environ.get("ANTHROPIC_API_KEY"):
+                print("ERROR: ANTHROPIC_API_KEY environment variable is not set.", file=sys.stderr)
+                sys.exit(1)
             query = input("Query: ").strip()
             if not query:
                 print("ERROR: Query cannot be empty.", file=sys.stderr)
@@ -1050,6 +1044,10 @@ def main():
     # -------------------------------------------------------------------------
     # research branch — load input CSV and profile entities
     # -------------------------------------------------------------------------
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        print("ERROR: ANTHROPIC_API_KEY environment variable is not set.", file=sys.stderr)
+        sys.exit(1)
+
     skill = load_skill(skill_name)
 
     input_path = Path(args.input)
@@ -1066,6 +1064,10 @@ def main():
             for row in reader
             if row["entity_name"].strip()
         ]
+
+    if args.concurrency < 1:
+        print("ERROR: --concurrency must be at least 1.", file=sys.stderr)
+        sys.exit(1)
 
     # Cost estimation gate
     est_cost_low  = len(entities) * COST_PER_ENTITY_LOW
