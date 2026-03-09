@@ -508,6 +508,10 @@ async def research_entity_async(
                 })
         if tool_results:
             messages.append({"role": "user", "content": tool_results})
+        else:
+            raise RuntimeError(
+                f"Unexpected stop_reason={response.stop_reason!r} for {entity_name!r} at round {round_num+1}"
+            )
 
     raise RuntimeError(
         f"Reached {skill.max_tool_rounds} tool rounds without end_turn"

@@ -92,3 +92,43 @@ class TestDiscoverVendorsUnknownStopReason:
             result = asyncio.run(discover_vendors_via_llm("AI scribes", "test-model"))
         assert result == ["Abridge"]
         assert mock_client.messages.create.call_count == 2
+
+
+class TestResearchEntityUnknownStopReason:
+    def _make_end_response(self):
+        text_block = MagicMock()
+        text_block.type = "text"
+        text_block.text = '{"entity_name": "Acme", "research_notes": "ok"}'
+        r = MagicMock()
+        r.stop_reason = "end_turn"
+        r.content = [text_block]
+        r.container = None
+        return r
+
+    def _make_unknown_response(self, stop_reason="max_tokens"):
+        r = MagicMock()
+        r.stop_reason = stop_reason
+        r.content = []
+        r.container = None
+        return r
+
+    def test_unknown_stop_reason_raises_immediately(self):
+        """stop_reason other than end_turn/pause_turn must raise on first occurrence."""
+        skill = _make_skill()
+        client = MagicMock()
+        client.messages.create = AsyncMock(
+            return_value=self._make_unknown_response("max_tokens")
+        )
+        with pytest.raises(RuntimeError, match="max_tokens"):
+            asyncio.run(research_entity_async(client, "Acme", skill, "test-model"))
+
+        # Must have called create() exactly once — not looped through all rounds
+        assert client.messages.create.call_count == 1
+
+    def test_end_turn_still_works(self):
+        """Normal end_turn path must still work after the fix."""
+        skill = _make_skill()
+        client = MagicMock()
+        client.messages.create = AsyncMock(return_value=self._make_end_response())
+        result = asyncio.run(research_entity_async(client, "Acme", skill, "test-model"))
+        assert result["entity_name"] == "Acme"
