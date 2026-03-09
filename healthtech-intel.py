@@ -876,6 +876,48 @@ def discover_health_systems(state: str) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# CLI helpers
+# ---------------------------------------------------------------------------
+
+def _run_research(entities: list[str], skill, args, output_path, sources_path) -> None:
+    """Open output CSVs and run the appropriate research runner (batch/concurrent/sequential)."""
+    fields = SKILL_FIELDS[skill.name]
+    clean_fieldnames = fields
+    src_fieldnames   = sources_fieldnames(fields)
+    success_count = 0
+    error_count   = 0
+
+    with (
+        open(output_path,  "w", newline="", encoding="utf-8") as clean_f,
+        open(sources_path, "w", newline="", encoding="utf-8") as src_f,
+    ):
+        clean_writer   = csv.DictWriter(clean_f,  fieldnames=clean_fieldnames, extrasaction="ignore")
+        sources_writer = csv.DictWriter(src_f,    fieldnames=src_fieldnames,   extrasaction="ignore")
+        clean_writer.writeheader()
+        sources_writer.writeheader()
+
+        if args.batch:
+            print(f"Running {len(entities)} entities via Messages Batches API (50% discount, async)...\n")
+            success_count, error_count = asyncio.run(
+                _run_batches_api(entities, skill, args.model, clean_writer, sources_writer, clean_f, src_f)
+            )
+        elif args.concurrency > 1:
+            print(f"Running {len(entities)} entities with {args.concurrency} concurrent workers...\n")
+            success_count, error_count = asyncio.run(
+                _run_batch(entities, skill, args.model, args.concurrency, clean_writer, sources_writer, clean_f, src_f)
+            )
+        else:
+            print(f"Running {len(entities)} entities sequentially...\n")
+            success_count, error_count = asyncio.run(
+                _run_sequential(entities, skill, args.model, clean_writer, sources_writer, clean_f, src_f)
+            )
+
+    print(f"\nDone. {success_count} succeeded, {error_count} failed.")
+    print(f"Clean results:   {output_path}")
+    print(f"Sources/verify:  {sources_path}")
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -998,6 +1040,52 @@ def main():
         help="Skip cost confirmation prompt (for CI / scripted use).",
     )
 
+    # -------------------------------------------------------------------------
+    # pipeline
+    # -------------------------------------------------------------------------
+    pipeline_parser = subparsers.add_parser(
+        "pipeline", help="Discover then profile in one shot (no intermediate CSV)."
+    )
+    pipeline_sub = pipeline_parser.add_subparsers(dest="target", required=True)
+
+    # pipeline vendor
+    pv = pipeline_sub.add_parser(
+        "vendor", help="Discover vendors via query, then profile them."
+    )
+    pv.add_argument(
+        "--output",
+        default="vendor-pipeline-results.csv",
+        help="Clean output CSV (default: vendor-pipeline-results.csv).",
+    )
+    pv.add_argument("--batch", action="store_true",
+        help="Use Messages Batches API (~50%% cost discount, async, no agentic loop).")
+    pv.add_argument("--concurrency", type=int, default=5,
+        help="Concurrent API calls (default: 5). Use 1 for sequential.")
+    pv.add_argument("--model", default=DEFAULT_MODEL,
+        help=f"Anthropic model to use (default: {DEFAULT_MODEL}).")
+    pv.add_argument("--yes", action="store_true",
+        help="Skip cost confirmation prompt.")
+
+    # pipeline health-system
+    phs = pipeline_sub.add_parser(
+        "health-system", help="Discover health systems by state, then profile them."
+    )
+    phs.add_argument("--state", required=True,
+        help="Two-letter state code (e.g. CA, NY).")
+    phs.add_argument(
+        "--output",
+        default=None,
+        help="Clean output CSV (default: <state>-pipeline-results.csv).",
+    )
+    phs.add_argument("--batch", action="store_true",
+        help="Use Messages Batches API (~50%% cost discount, async, no agentic loop).")
+    phs.add_argument("--concurrency", type=int, default=5,
+        help="Concurrent API calls (default: 5). Use 1 for sequential.")
+    phs.add_argument("--model", default=DEFAULT_MODEL,
+        help=f"Anthropic model to use (default: {DEFAULT_MODEL}).")
+    phs.add_argument("--yes", action="store_true",
+        help="Skip cost confirmation prompt.")
+
     args = parser.parse_args()
 
     # -------------------------------------------------------------------------
@@ -1042,6 +1130,61 @@ def main():
         return
 
     # -------------------------------------------------------------------------
+    # pipeline branch — discover in memory then research
+    # -------------------------------------------------------------------------
+    if args.command == "pipeline":
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            print("ERROR: ANTHROPIC_API_KEY environment variable is not set.", file=sys.stderr)
+            sys.exit(1)
+
+        skill = load_skill(skill_name)
+
+        if args.target == "vendor":
+            query = input("Query: ").strip()
+            if not query:
+                print("ERROR: Query cannot be empty.", file=sys.stderr)
+                sys.exit(1)
+            print(f'\nDiscovering vendors for: "{query}" ...')
+            entities = asyncio.run(discover_vendors_via_llm(query, args.model))
+            preview = ", ".join(entities[:8])
+            suffix = f" ... (+{len(entities) - 8} more)" if len(entities) > 8 else ""
+            print(f"Discovered {len(entities)} companies: {preview}{suffix}\n")
+            output_path = Path(args.output)
+
+        else:  # health-system
+            entities = discover_health_systems(args.state)
+            output_path = Path(
+                args.output if args.output else f"{args.state.lower()}-pipeline-results.csv"
+            )
+
+        sources_path = output_path.with_stem(output_path.stem + "_sources")
+
+        est_cost_low  = len(entities) * COST_PER_ENTITY_LOW
+        est_cost_high = len(entities) * COST_PER_ENTITY_HIGH
+        est_minutes   = (len(entities) / args.concurrency) * AVG_SECONDS_PER_ENTITY / 60
+
+        print()
+        print(f"Skill:          {skill.name}")
+        print(f"Entities:       {len(entities)}")
+        print(f"Model:          {args.model}")
+        print(f"Concurrency:    {args.concurrency}")
+        print(f"Est. cost:      ${est_cost_low:.0f} – ${est_cost_high:.0f}")
+        print(f"Est. runtime:   ~{est_minutes:.0f} min")
+        print(f"Clean output:   {output_path}")
+        print(f"Sources output: {sources_path}")
+        print()
+
+        if not args.yes:
+            answer = input("Proceed? [y/N] ").strip().lower()
+            if answer != "y":
+                print("Aborted.")
+                sys.exit(0)
+
+        print()
+        _run_research(entities, skill, args, output_path, sources_path)
+        return
+
+    # -------------------------------------------------------------------------
     # research branch — load input CSV and profile entities
     # -------------------------------------------------------------------------
     if not os.environ.get("ANTHROPIC_API_KEY"):
@@ -1065,7 +1208,7 @@ def main():
             if row["entity_name"].strip()
         ]
 
-    if args.concurrency < 1:
+    if args.command in ("research", "pipeline") and args.concurrency < 1:
         print("ERROR: --concurrency must be at least 1.", file=sys.stderr)
         sys.exit(1)
 
@@ -1096,50 +1239,7 @@ def main():
 
     print()
 
-    fields = SKILL_FIELDS[skill.name]
-    clean_fieldnames = fields
-    src_fieldnames   = sources_fieldnames(fields)
-
-    success_count = 0
-    error_count   = 0
-
-    with (
-        open(output_path,  "w", newline="", encoding="utf-8") as clean_f,
-        open(sources_path, "w", newline="", encoding="utf-8") as src_f,
-    ):
-        clean_writer   = csv.DictWriter(clean_f,  fieldnames=clean_fieldnames, extrasaction="ignore")
-        sources_writer = csv.DictWriter(src_f,    fieldnames=src_fieldnames,   extrasaction="ignore")
-        clean_writer.writeheader()
-        sources_writer.writeheader()
-
-        if args.batch:
-            print(f"Running {len(entities)} entities via Messages Batches API (50% discount, async)...\n")
-            success_count, error_count = asyncio.run(
-                _run_batches_api(
-                    entities, skill, args.model,
-                    clean_writer, sources_writer, clean_f, src_f,
-                )
-            )
-        elif args.concurrency > 1:
-            print(f"Running {len(entities)} entities with {args.concurrency} concurrent workers...\n")
-            success_count, error_count = asyncio.run(
-                _run_batch(
-                    entities, skill, args.model, args.concurrency,
-                    clean_writer, sources_writer, clean_f, src_f,
-                )
-            )
-        else:
-            print(f"Running {len(entities)} entities sequentially...\n")
-            success_count, error_count = asyncio.run(
-                _run_sequential(
-                    entities, skill, args.model,
-                    clean_writer, sources_writer, clean_f, src_f,
-                )
-            )
-
-    print(f"\nDone. {success_count} succeeded, {error_count} failed.")
-    print(f"Clean results:   {output_path}")
-    print(f"Sources/verify:  {sources_path}")
+    _run_research(entities, skill, args, output_path, sources_path)
 
 
 if __name__ == "__main__":
