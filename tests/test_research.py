@@ -1,5 +1,5 @@
 """
-Unit tests for research.py pure Python functions.
+Unit tests for healthtech-intel.py pure Python functions.
 No API calls required — all tests run offline.
 """
 
@@ -10,18 +10,23 @@ from pathlib import Path
 
 import pytest
 
-# Make research importable from the project root
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# healthtech-intel.py has a hyphen so standard import doesn't work; use importlib
+import importlib.util
 
-from research import (
-    SKILL_FIELDS,
-    SKILL_OUTPUT_SCHEMAS,
-    _execute_read_file,
-    parse_json_response,
-    profile_to_sources_row,
-    sources_fieldnames,
-    to_clean_row,
+_spec = importlib.util.spec_from_file_location(
+    "healthtech_intel",
+    Path(__file__).parent.parent / "healthtech-intel.py",
 )
+_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
+
+SKILL_FIELDS = _mod.SKILL_FIELDS
+SKILL_OUTPUT_SCHEMAS = _mod.SKILL_OUTPUT_SCHEMAS
+_execute_read_file = _mod._execute_read_file
+parse_json_response = _mod.parse_json_response
+profile_to_sources_row = _mod.profile_to_sources_row
+sources_fieldnames = _mod.sources_fieldnames
+to_clean_row = _mod.to_clean_row
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +223,7 @@ class TestExecuteReadFile:
         assert "restricted" in result.lower() or ".claude/skills" in result
 
     def test_relative_traversal_blocked(self):
-        result = _execute_read_file(".claude/skills/../../research.py")
+        result = _execute_read_file(".claude/skills/../../healthtech-intel.py")
         assert result.startswith("ERROR")
 
     def test_nonexistent_file_returns_error(self):
@@ -243,7 +248,7 @@ class TestPauseTurnHandling:
     """
 
     def _make_skill(self):
-        from research import Skill
+        Skill = _mod.Skill
         return Skill(
             name="researching-health-it-vendor",
             description="",
@@ -275,7 +280,7 @@ class TestPauseTurnHandling:
         'assistant' (no extra user message). The second call gets end_turn.
         Total: 2 create() calls.
         """
-        from research import research_entity_async
+        research_entity_async = _mod.research_entity_async
 
         skill = self._make_skill()
         client = MagicMock()
@@ -296,7 +301,7 @@ class TestPauseTurnHandling:
 
     def test_end_turn_on_first_call_returns_immediately(self):
         """When first response is end_turn, create() is called exactly once."""
-        from research import research_entity_async
+        research_entity_async = _mod.research_entity_async
 
         skill = self._make_skill()
         client = MagicMock()
@@ -322,7 +327,8 @@ class TestCachedPromptStructure:
         """
         import asyncio
         from unittest.mock import AsyncMock, MagicMock
-        from research import research_entity_async, Skill
+        research_entity_async = _mod.research_entity_async
+        Skill = _mod.Skill
 
         skill = Skill(
             name="researching-health-it-vendor",
@@ -359,7 +365,8 @@ class TestCachedPromptStructure:
         """
         import asyncio
         from unittest.mock import AsyncMock, MagicMock
-        from research import research_entity_async, Skill
+        research_entity_async = _mod.research_entity_async
+        Skill = _mod.Skill
 
         skill = Skill(
             name="researching-health-it-vendor",
@@ -396,7 +403,8 @@ class TestCachedPromptStructure:
         """research_entity_async builds a two-block user message with cache_control on block 0."""
         import asyncio
         from unittest.mock import AsyncMock, MagicMock
-        from research import research_entity_async, Skill
+        research_entity_async = _mod.research_entity_async
+        Skill = _mod.Skill
 
         skill = Skill(
             name="researching-health-it-vendor",
@@ -472,7 +480,8 @@ class TestOutputSchemas:
         """research_entity_async passes output_config with the correct schema to create()."""
         import asyncio
         from unittest.mock import AsyncMock, MagicMock
-        from research import research_entity_async, Skill
+        research_entity_async = _mod.research_entity_async
+        Skill = _mod.Skill
 
         skill = Skill(
             name="researching-health-it-vendor",
