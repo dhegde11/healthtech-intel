@@ -185,3 +185,27 @@ class TestExtrasactionRaises:
         with patch.object(_mod, "_run_sequential", new=fake_sequential):
             with pytest.raises(ValueError):
                 _mod._run_research(["Acme"], skill, args, out, src)
+
+
+class TestLoadSkillYamlErrors:
+    def _make_skill_dir(self, tmp_path, content):
+        skill_dir = tmp_path / ".claude" / "skills" / "test-skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text(content)
+        return tmp_path
+
+    def test_empty_yaml_frontmatter_exits_cleanly(self, tmp_path):
+        """Empty YAML frontmatter (---\\n---\\nbody) must sys.exit(1) with clear message, not KeyError."""
+        base = self._make_skill_dir(tmp_path, "---\n---\nPrompt body here.\n")
+        with patch.object(_mod, "__file__", str(base / "healthtech-intel.py")):
+            with pytest.raises(SystemExit) as exc:
+                _mod.load_skill("test-skill")
+        assert exc.value.code != 0
+
+    def test_missing_name_field_exits_cleanly(self, tmp_path):
+        """YAML without 'name' key must sys.exit(1) with clear message, not KeyError."""
+        base = self._make_skill_dir(tmp_path, "---\ndescription: foo\n---\nPrompt body.\n")
+        with patch.object(_mod, "__file__", str(base / "healthtech-intel.py")):
+            with pytest.raises(SystemExit) as exc:
+                _mod.load_skill("test-skill")
+        assert exc.value.code != 0

@@ -189,6 +189,21 @@ def load_skill(skill_name: str) -> Skill:
         sys.exit(1)
 
     meta = yaml.safe_load(parts[1])
+
+    if not meta or not isinstance(meta, dict):
+        print(
+            f"ERROR: Skill file {skill_path} has empty or invalid YAML frontmatter.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    if "name" not in meta:
+        print(
+            f"ERROR: Skill file {skill_path} YAML frontmatter is missing required 'name' field.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     prompt_body = parts[2].strip()
 
     return Skill(
