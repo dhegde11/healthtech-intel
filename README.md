@@ -85,35 +85,11 @@ Every run writes two CSVs:
 | `results.csv` | Clean values only | Downstream consumption, import, sharing |
 | `results_sources.csv` | Values + source URLs + confidence levels | QA, verification, auditing |
 
-### Vendor skill output
+### Vendor skill fields
 
-**Clean output** (`results.csv`):
-```
-entity_name, product_category, primary_customer, ehr_integrations,
-notable_health_system_customers, business_model, fda_status,
-clinical_evidence, funding_stage, total_funding, key_investors,
-num_employees, headquarters, founded_year
-```
+`results_sources.csv` adds `_source` and `_confidence` for every field.
 
-**Sources output** (`results_sources.csv`) — same fields, plus `_source` and `_confidence` for every field.
-
-### Health system skill output
-
-**Clean output** (`results.csv`):
-```
-entity_name, health_system, bed_count, ownership_type, ehr_vendor,
-cms_star_rating, teaching_hospital, vbc_participation, payer_mix,
-annual_revenue, innovation_program, recent_tech_announcements,
-cio_name, geographic_region
-```
-
-**Sources output** (`results_sources.csv`) — same pattern.
-
-### Field vocabulary
-
-**Vendor skill:**
-
-| Field | Allowed values |
+| Field | Values |
 |---|---|
 | `product_category` | AI Scribe / EHR / RCM / Care Management / CDT / Patient Engagement / Clinical Decision Support / Interoperability / Other |
 | `primary_customer` | Provider / Payer / Employer / DTC |
@@ -122,9 +98,13 @@ cio_name, geographic_region
 | `funding_stage` | Seed / Series A / Series B / Series C / Series D+ / Public / Profitable / Unknown |
 | `clinical_evidence` | true / false |
 
-**Health system skill:**
+**Free-text fields:** `entity_name`, `ehr_integrations`, `notable_health_system_customers`, `total_funding`, `key_investors`, `num_employees`, `headquarters`, `founded_year`
 
-| Field | Allowed values |
+### Health system skill fields
+
+`results_sources.csv` adds `_source` and `_confidence` for every field.
+
+| Field | Values |
 |---|---|
 | `ownership_type` | Non-profit / For-profit / Academic / Government / Unknown |
 | `ehr_vendor` | Epic / Oracle Health / Meditech / Allscripts / athenahealth / Other / Unknown |
@@ -133,6 +113,8 @@ cio_name, geographic_region
 | `vbc_participation` | true / false |
 | `innovation_program` | true / false |
 | `geographic_region` | Northeast / Southeast / Midwest / Southwest / West |
+
+**Free-text fields:** `entity_name`, `health_system`, `bed_count`, `payer_mix`, `annual_revenue`, `recent_tech_announcements`, `cio_name`
 
 ## CLI subcommands
 
@@ -183,6 +165,12 @@ The CLI shows an estimate and requires confirmation before any API call.
 | 1 | ~$0.15 – $0.50 |
 | 10 | ~$1.50 – $5.00 |
 | 100 | ~$15 – $50 |
+
+**`--batch` uses the [Messages Batches API](https://docs.anthropic.com/en/docs/build-with-claude/message-batches) for a ~50% cost discount.** Results are processed asynchronously — the CLI polls until complete, which can take minutes to hours depending on queue depth. Use it for large lists where cost matters more than turnaround time.
+
+```bash
+python healthtech-intel.py research vendor --input vendors.csv --output results.csv --batch
+```
 
 > Prices above are estimates only. Model pricing changes frequently. Always check [anthropic.com/pricing](https://anthropic.com/pricing) before large runs.
 

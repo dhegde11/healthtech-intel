@@ -32,7 +32,7 @@ Good areas for contribution:
 
 - **Skill improvements** — better source-priority rules, new fields, improved prompt instructions in `.claude/skills/*/SKILL.md`
 - **Bug fixes** in `healthtech-intel.py` — error handling, edge cases in the agentic loop
-- **New output formats** — JSON, SQLite (see Future Work in README)
+- **New output formats** — JSON, SQLite
 - **Checkpointing / `--resume`** — skip already-completed entities on re-run
 - **Tests** — unit tests with mocked API responses
 
