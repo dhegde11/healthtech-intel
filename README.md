@@ -64,13 +64,12 @@ python healthtech-intel.py pipeline health-system --state CA --output ca_results
 ## Architecture
 
 ```mermaid
-flowchart TD
-    A["Natural language query"] -->|discover vendor| B["Company list"]
-    G["CMS public data"] -->|discover health-system| B
-    B --> C
-    D["CSV input"] --> C["Profile loop<br/>one context window per entity"]
-    C --> E["results.csv — clean values"]
-    C --> F["results_sources.csv — values + sources + confidence"]
+flowchart LR
+    A["Natural language query"] -->|discover| B["Entity list"]
+    B --> C["Profile loop<br/>one context window per entity"]
+    D["CSV input"] --> C
+    C --> E["results.csv"]
+    C --> F["results_sources.csv"]
 ```
 
 ## Output
@@ -129,7 +128,7 @@ healthtech-intel.py pipeline health-system --state CA   # discover + profile in 
 | Flag | Default | Description |
 |---|---|---|
 | `--state` | _(required for health-system)_ | Two-letter state code (e.g. `CA`, `NY`). |
-| `--output` | `vendor-results.csv` or `<state>-health-systems.csv` | Output CSV path. |
+| `--output` | _(varies)_ | `vendor-results.csv` or `<STATE>-health-systems.csv` |
 | `--model` | `claude-sonnet-4-6` | Anthropic model (vendor only). Override via `ANTHROPIC_MODEL`. |
 
 **`profile` and `pipeline` flags:**
