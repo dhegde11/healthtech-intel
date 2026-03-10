@@ -211,6 +211,53 @@ class TestLoadSkillYamlErrors:
         assert exc.value.code != 0
 
 
+class TestDiscoverHealthSystems:
+    def _mock_urlopen(self, mock_urlopen, csv_content: str):
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = csv_content.encode("utf-8")
+        mock_urlopen.return_value.__enter__ = lambda s: mock_resp
+        mock_urlopen.return_value.__exit__ = lambda *a: None
+
+    def test_missing_column_exits_cleanly(self):
+        """If CMS CSV lacks 'Hospital Name' column, sys.exit(1) with clear message, not KeyError."""
+        cms_data = "FacilityName,State\nSome Hospital,CA\n"
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            self._mock_urlopen(mock_urlopen, cms_data)
+            with pytest.raises(SystemExit) as exc:
+                _mod.discover_health_systems("CA")
+        assert exc.value.code != 0
+
+    def test_missing_state_column_exits_cleanly(self):
+        """If CMS CSV lacks 'State' column, sys.exit(1) with clear message."""
+        cms_data = "Hospital Name,Province\nSome Hospital,CA\n"
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            self._mock_urlopen(mock_urlopen, cms_data)
+            with pytest.raises(SystemExit) as exc:
+                _mod.discover_health_systems("CA")
+        assert exc.value.code != 0
+
+    def test_returns_filtered_names_for_state(self):
+        """Returns only hospitals matching the given state, trimmed."""
+        cms_data = (
+            "Hospital Name,State\n"
+            "Kaiser Permanente,CA\n"
+            "Sutter Health,CA\n"
+            "Mayo Clinic,MN\n"
+        )
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            self._mock_urlopen(mock_urlopen, cms_data)
+            result = _mod.discover_health_systems("CA")
+        assert result == ["Kaiser Permanente", "Sutter Health"]
+
+    def test_case_insensitive_state_match(self):
+        """State matching is case-insensitive."""
+        cms_data = "Hospital Name,State\nGeneral Hospital,ca\n"
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            self._mock_urlopen(mock_urlopen, cms_data)
+            result = _mod.discover_health_systems("CA")
+        assert result == ["General Hospital"]
+
+
 class TestBatchPolling:
     def test_first_poll_interval_is_not_one_hour(self):
         """Initial poll interval must be much less than 3600s."""

@@ -887,6 +887,18 @@ def discover_health_systems(state: str) -> list[str]:
         sys.exit(1)
 
     reader = csv.DictReader(lines)
+    required_cols = {"Hospital Name", "State"}
+    actual_cols = set(reader.fieldnames or [])
+    missing = required_cols - actual_cols
+    if missing:
+        print(
+            f"ERROR: CMS CSV is missing expected columns: {missing}.\n"
+            f"Columns found: {actual_cols}\n"
+            f"The CMS schema may have changed. Update the column names in discover_health_systems().",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     names = [
         row["Hospital Name"].strip()
         for row in reader
