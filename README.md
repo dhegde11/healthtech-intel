@@ -64,12 +64,13 @@ python healthtech-intel.py pipeline health-system --state CA --output ca_results
 ## Architecture
 
 ```mermaid
-flowchart LR
-    A["Natural language query"] -->|discover| B["Company list"]
-    B --> C["Research loop<br/>with one context window per entity"]
-    D["CSV input"] --> C
-    C --> E["results.csv<br/>clean values"]
-    C --> F["results_sources.csv<br/>values + source URLs + confidence"]
+flowchart TD
+    A["Natural language query"] -->|discover vendor| B["Company list"]
+    G["CMS public data"] -->|discover health-system| B
+    B --> C
+    D["CSV input"] --> C["Profile loop<br/>one context window per entity"]
+    C --> E["results.csv — clean values"]
+    C --> F["results_sources.csv — values + sources + confidence"]
 ```
 
 ## Output
@@ -125,24 +126,24 @@ healthtech-intel.py pipeline health-system --state CA   # discover + profile in 
 
 **`discover` flags:**
 
-| Flag | Subcommand | Default | Description |
-|---|---|---|---|
-| `--state` | `health-system` | _(required)_ | Two-letter state code (e.g. `CA`, `NY`). |
-| `--output` | both | see below | Output CSV. Default: `vendor-results.csv` or `<state>-health-systems.csv`. |
-| `--model` | `vendor` | `claude-sonnet-4-6` | Anthropic model. Override via `ANTHROPIC_MODEL` env var. |
+| Flag | Default | Description |
+|---|---|---|
+| `--state` | _(required for health-system)_ | Two-letter state code (e.g. `CA`, `NY`). |
+| `--output` | `vendor-results.csv` or `<state>-health-systems.csv` | Output CSV path. |
+| `--model` | `claude-sonnet-4-6` | Anthropic model (vendor only). Override via `ANTHROPIC_MODEL`. |
 
 **`profile` and `pipeline` flags:**
 
 | Flag | Default | Description |
 |---|---|---|
 | `--input` | _(required for profile)_ | Input CSV with `entity_name` column. |
-| `--output` | see below | Clean output CSV. A `_sources.csv` is auto-written alongside it. |
-| `--batch` | false | Use Messages Batches API (~50% cost discount, async). |
-| `--concurrency` | `5` | Number of parallel API calls. Recommended range: 5–10. |
-| `--model` | `claude-sonnet-4-6` | Anthropic model. Override via `ANTHROPIC_MODEL` env var. |
+| `--output` | see below | Output CSV. A `_sources.csv` is auto-written alongside it. |
+| `--batch` | false | Use Messages Batches API (~50% cost, async). |
+| `--concurrency` | `5` | Parallel API calls. Recommended range: 5–10. |
+| `--model` | `claude-sonnet-4-6` | Anthropic model. Override via `ANTHROPIC_MODEL`. |
 | `--yes` | false | Skip the cost confirmation prompt. |
 
-Default output filenames: `healthtech-intel-vendor-research-results.csv`, `healthtech-intel-health-system-research-results.csv`, `vendor-pipeline-results.csv`, `<state>-pipeline-results.csv`.
+Default `--output` filenames: `healthtech-intel-vendor-research-results.csv`, `healthtech-intel-health-system-research-results.csv`, `vendor-pipeline-results.csv`, `<state>-pipeline-results.csv`.
 
 ## Requirements
 
