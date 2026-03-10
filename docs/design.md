@@ -18,7 +18,7 @@ Requires `ANTHROPIC_API_KEY` — set it as an environment variable before runnin
 | Interface | Use case | How |
 |---|---|---|
 | **Claude Code discovery agent** | Build a competitor list from natural language, iteratively | Invoke `health-it-vendor-discoverer` agent in Claude Code |
-| **Claude Code research skill** | Profile a single company or health system, interactive | Invoke `profile-health-it-vendor` or `profile-health-system` skill in Claude Code |
+| **Claude Code profile skill** | Profile a single company or health system, interactive | Invoke `profile-health-it-vendor` or `profile-health-system` skill in Claude Code |
 | **CLI batch** | CSV → CSV at any scale, or discover + profile in one command | `python healthtech-intel.py profile vendor --input ... --output ...` |
 
 The same skill files (`.claude/skills/`) drive both Claude Code and CLI. Claude Code
@@ -58,7 +58,7 @@ healthtech-intel/
 
 ## Data Flow
 
-**Phase 1 — Discovery** (vendor research only, optional):
+**Phase 1 — Discovery** (vendor only, optional):
 ```
 Natural language query (interactive prompt or Claude Code UI)
     ↓
@@ -72,7 +72,7 @@ Returns JSON list of company names
 [CLI: list feeds directly into Phase 2]
 ```
 
-**Phase 2 — Research** (all skills):
+**Phase 2 — Profiling** (all skills):
 ```
 Input CSV (entity_name column)
   —or—  CMS discovery (discover health-system --state XX)
@@ -115,11 +115,13 @@ leakage — a company researched early in a batch can't "bleed" into a later one
 accumulated context. It also means errors are isolated: one failed lookup doesn't
 corrupt the next.
 
-### Skills live in `.claude/skills/` — not in Python
-The skill files (SKILL.md) are the source of truth for the research prompt and output
-schema. Both interfaces read from the same file: Claude Code invokes it interactively;
-`healthtech-intel.py` loads it as a prompt template for batch runs. A single edit to SKILL.md
-propagates to both. No duplication.
+### Skills are the source of truth — not Python
+Skill files define the prompt and output schema. There are two forms:
+
+- **`skills/`** — flat `.md` files. Load into any AI assistant (ChatGPT, Gemini, Copilot, etc.) for interactive use.
+- **`.claude/skills/`** — extended versions with reference files (`field-definitions.md`, `source-priority.md`). Used by Claude Code interactively and loaded by `healthtech-intel.py` for batch runs.
+
+A single edit to a skill propagates to both the interactive and batch interfaces. No duplication.
 
 ### Progressive disclosure for reference files
 The skill instructs Claude to load `field-definitions.md` and `source-priority.md`
@@ -225,7 +227,7 @@ a pre-built CSV.
 
 Prompts for a natural language query and uses the `discover-health-it-vendor`
 skill to find candidate companies via web search. Use `discover` to write a list to CSV
-first, or `pipeline` to discover and research in one shot:
+first, or `pipeline` to discover and profile in one shot:
 
 ```bash
 # Two-step: discover then profile
