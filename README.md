@@ -1,13 +1,13 @@
 # healthtech-intel
 
-![healthtech-intel demo](demo.gif)
-
 A market intelligence tool for the health IT ecosystem with four capabilities:
 
 - **Vendor discovery** — Build a competitor list from natural language. "Find AI scribe competitors to Nuance" → curated company list → CSV ready for profiling.
 - **Vendor profiling** — Profile health IT companies for competitive analysis. Who are they, what do they sell, who have they sold to, how are they funded, and what is their regulatory status?
 - **Health system discovery** — Discover hospitals and health systems by US state from the public CMS dataset. No input list needed — a free, open-source alternative to [Definitive Healthcare](https://www.definitivehc.com/).
 - **Health system profiling** — Profile hospitals and health systems for BD prospecting. EHR vendor, bed count, CMS star rating, payer mix, CIO name, and more.
+
+![healthtech-intel demo](https://github.com/user-attachments/assets/42710642-6c8f-43dc-addc-522c7ae22aa3)
 
 Two ways to use this tool:
 
