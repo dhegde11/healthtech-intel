@@ -1,5 +1,7 @@
 # healthtech-intel
 
+![healthtech-intel demo](demo.gif)
+
 A market intelligence tool for the health IT ecosystem with four capabilities:
 
 - **Vendor discovery** — Build a competitor list from natural language. "Find AI scribe competitors to Nuance" → curated company list → CSV ready for profiling.
@@ -66,7 +68,7 @@ python healthtech-intel.py pipeline health-system --state CA --output ca_results
 ```mermaid
 flowchart LR
     A["Natural language query"] -->|discover| B["Entity list"]
-    B --> C["Profile loop<br/>one context window per entity"]
+    B --> C["Profile loop<br/>with one context window per entity"]
     D["CSV input"] --> C
     C --> E["results.csv"]
     C --> F["results_sources.csv"]
