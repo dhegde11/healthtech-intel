@@ -144,7 +144,7 @@ varys.py pipeline health-system --state CA   # discover + profile in one shot
 | `--input` | _(required for profile)_ | Input CSV with `entity_name` column. |
 | `--output` | see below | Output CSV. A `_sources.csv` is auto-written alongside it. |
 | `--batch` | false | Use Messages Batches API (~50% cost, async). |
-| `--concurrency` | `5` | Parallel API calls. Recommended range: 5–10. |
+| `--concurrency` | `1` | Parallel API calls. Default is 1 (sequential). Increase based on your Anthropic rate limit tier — see [Concurrency and rate limits](#concurrency-and-rate-limits). |
 | `--model` | `claude-sonnet-4-6` | Anthropic model. Override via `ANTHROPIC_MODEL`. |
 | `--yes` | false | Skip the cost confirmation prompt. |
 
@@ -177,6 +177,22 @@ python varys.py profile vendor --input vendors.csv --output results.csv --batch
 > Prices above are estimates only. Model pricing changes frequently. Always check [anthropic.com/pricing](https://anthropic.com/pricing) before large runs.
 
 Use `--yes` to skip the confirmation prompt in CI or scripted workflows.
+
+## Concurrency and rate limits
+
+The default `--concurrency 1` runs entities sequentially. Agentic calls with web search accumulate large contexts — a single round can send 10,000–20,000 input tokens. Running multiple entities in parallel multiplies this and can trigger 429 rate limit errors.
+
+Adjust based on your Anthropic usage tier:
+
+| Rate limit | Recommended `--concurrency` |
+|---|---|
+| 30,000 input tokens/min | 1 (default) — even sequential can occasionally hit limits on heavy searches |
+| 100,000 input tokens/min | 3–5 |
+| 200,000+ input tokens/min | 5–10 |
+
+Rate limit errors are retried automatically with exponential backoff (60s, then 120s), so a run will always complete — it just takes longer at lower tiers.
+
+**`--batch` is unaffected by this limit** — batch requests are processed asynchronously on Anthropic's side and have a separate rate limit bucket.
 
 ## Further reading
 

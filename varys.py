@@ -1132,8 +1132,8 @@ def main():
     rv.add_argument(
         "--concurrency",
         type=int,
-        default=5,
-        help="Concurrent API calls (default: 5). Use 1 for sequential.",
+        default=1,
+        help="Concurrent API calls (default: 1). Increase based on your rate limit tier — see README.",
     )
     rv.add_argument(
         "--model",
@@ -1164,8 +1164,8 @@ def main():
     rhs.add_argument(
         "--concurrency",
         type=int,
-        default=5,
-        help="Concurrent API calls (default: 5). Use 1 for sequential.",
+        default=1,
+        help="Concurrent API calls (default: 1). Increase based on your rate limit tier — see README.",
     )
     rhs.add_argument(
         "--model",
