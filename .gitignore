@@ -18,6 +18,8 @@ discovered_competitors.csv
 # Demo assets
 *.mp4
 *.gif
+*.svg
+*.svg.png
 
 # Environment
 .env
