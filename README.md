@@ -156,25 +156,27 @@ Default `--output` filenames: `varys-vendor-research-results.csv`, `varys-health
 - `anthropic>=0.40.0`
 - `pyyaml>=6.0`
 
+## Batch vs agentic mode
+
+| | `--batch` | Default (agentic) |
+|---|---|---|
+| **How it works** | Single-shot per entity with adaptive thinking, then agentic follow-up on weak fields | Full multi-round agentic loop from the start |
+| **Best for** | Mixed lists, large lists, fire-and-forget async workflows | Mostly obscure/early-stage companies, when you need results immediately |
+| **Well-known companies** | Excellent — high confidence, minimal follow-up needed | Excellent |
+| **Obscure/early-stage companies** | Good — adaptive thinking helps, agentic follow-up catches gaps | Best — multi-round web research from the start |
+| **Cost** | ~$0.02/company in tests | ~$0.20/company |
+| **Turnaround** | ~1 hour for 10 companies (async, Anthropic-side queue) | ~2–3 min per entity sequentially |
+| **Rate limit pressure** | None during batch phase | Hits limits on 30k TPM plans even at `--concurrency 1` |
+
+**Rule of thumb:** use `--batch` when you want to optimize for cost over latency, or your list is mostly well-known companies. Use agentic when you need results immediately or your list is mostly obscure/early-stage companies.
+
 ## Cost
 
 The CLI shows an estimate and requires confirmation before any API call.
 
-**Real-world cost: ~$0.50 per company** (your mileage will vary by entity size and obscurity).
+**Real-world cost: ~$0.02 per company with `--batch`, ~$0.20 per company with agentic** (varies by entity obscurity).
 
-| Companies | Estimated total |
-|---|---|
-| 1 | ~$0.15 – $0.50 |
-| 10 | ~$1.50 – $5.00 |
-| 100 | ~$15 – $50 |
-
-**`--batch` uses the [Messages Batches API](https://docs.anthropic.com/en/docs/build-with-claude/message-batches) for a ~50% cost discount.** Results are processed asynchronously — the CLI polls until complete, which can take minutes to hours depending on queue depth. Use it for large lists where cost matters more than turnaround time.
-
-```bash
-python varys.py profile vendor --input vendors.csv --output results.csv --batch
-```
-
-> Prices above are estimates only. Model pricing changes frequently. Always check [anthropic.com/pricing](https://anthropic.com/pricing) before large runs.
+> Prices are estimates based on claude-sonnet-4-6 (March 2026). Model pricing changes — always check [anthropic.com/pricing](https://anthropic.com/pricing) before large runs.
 
 Use `--yes` to skip the confirmation prompt in CI or scripted workflows.
 
