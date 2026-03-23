@@ -592,10 +592,10 @@ async def _run_sequential(
 
 
 # ---------------------------------------------------------------------------
-# Batch runner — writes results as each completes for crash durability
+# Concurrent runner — writes results as each completes for crash durability
 # ---------------------------------------------------------------------------
 
-async def _run_batch(
+async def _run_concurrent(
     entities: list[str],
     skill: Skill,
     model: str,
@@ -981,7 +981,7 @@ def _run_research(entities: list[str], skill, args, output_path, sources_path) -
         elif args.concurrency > 1:
             print(f"Running {len(entities)} entities with {args.concurrency} concurrent workers...\n")
             success_count, error_count = asyncio.run(
-                _run_batch(entities, skill, args.model, args.concurrency, clean_writer, sources_writer, clean_f, src_f)
+                _run_concurrent(entities, skill, args.model, args.concurrency, clean_writer, sources_writer, clean_f, src_f)
             )
         else:
             print(f"Running {len(entities)} entities sequentially...\n")

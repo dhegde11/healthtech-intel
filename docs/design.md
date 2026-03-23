@@ -132,7 +132,7 @@ The right answer is to split responsibility: a lightweight LLM discovery agent h
 ### One context window per company
 Each entity gets a fresh conversation with no shared history. This prevents context leakage — a company researched early in a batch can't "bleed" into a later one through accumulated context. It also means errors are isolated: one failed lookup doesn't corrupt the next.
 
-### Hybrid batch + agentic follow-up
+### Async mode (`--batch`) — hybrid Batches API + agentic follow-up
 Anthropic's Messages Batches API gives a 50% discount off regular API pricing by processing requests asynchronously. The hybrid mode uses this discount for a first pass over all entities, then spends full agentic cost only where the batch result was actually weak. The goal is cost savings without sacrificing answer quality — the 50% discount is the economic motivation, and the agentic follow-up is what ensures accuracy isn't traded away for it.
 
 `--batch` runs two phases automatically:

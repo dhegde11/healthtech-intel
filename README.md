@@ -17,7 +17,7 @@ Two ways to use this tool:
 
 **One at a time (interactive)** — Load a skill file into any AI assistant (Claude, ChatGPT, Gemini, etc.) and research entities conversationally. Ask follow-up questions, refine results, and build a competitor list interactively before exporting.
 
-**Batch (CLI)** — Run `varys.py` to process a CSV list end-to-end. Outputs clean values and source-cited results at any scale.
+**Batch processing (CLI)** — Run `varys.py` to process a CSV list end-to-end. Outputs clean values and source-cited results at any scale.
 
 ## Useful for
 
@@ -143,7 +143,7 @@ varys.py pipeline health-system --state CA   # discover + profile in one shot
 |---|---|---|
 | `--input` | _(required for profile)_ | Input CSV with `entity_name` column. |
 | `--output` | see below | Output CSV. A `_sources.csv` is auto-written alongside it. |
-| `--batch` | false | Hybrid batch + agentic mode. See [Batch vs agentic mode](#batch-vs-agentic-mode). |
+| `--batch` | false | Async mode via Anthropic's Batches API. See [Async mode vs agentic](#async-mode---batch--vs-agentic). |
 | `--concurrency` | `1` | Parallel API calls. Default is 1 (sequential). Increase based on your Anthropic rate limit tier — see [Concurrency and rate limits](#concurrency-and-rate-limits). |
 | `--model` | `claude-sonnet-4-6` | Anthropic model. Override via `ANTHROPIC_MODEL`. |
 | `--yes` | false | Skip the cost confirmation prompt. |
@@ -156,7 +156,7 @@ Default `--output` filenames: `varys-vendor-research-results.csv`, `varys-health
 - `anthropic>=0.84.0`
 - `pyyaml>=6.0`
 
-## Batch vs agentic mode
+## Async mode (`--batch`) vs agentic
 
 Anthropic's [Messages Batches API](https://docs.anthropic.com/en/docs/build-with-claude/message-batches) offers a 50% discount off regular API pricing by processing requests asynchronously. `--batch` uses this to keep costs low without sacrificing quality — it starts with a cost-efficient single-shot pass, then automatically runs the full agentic loop only on entities where the batch returned weak or missing fields. This is the tradeoff: lower cost at the expense of a longer total turnaround.
 
