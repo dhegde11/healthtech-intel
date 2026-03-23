@@ -109,104 +109,8 @@ Every run writes a pair of CSVs:
 
 ## Design Decisions
 
-### One context window per company
-Each entity gets a fresh conversation with no shared history. This prevents context
-leakage — a company researched early in a batch can't "bleed" into a later one through
-accumulated context. It also means errors are isolated: one failed lookup doesn't
-corrupt the next.
-
-### Skills are the source of truth — not Python
-Skill files define the prompt and output schema. There are two forms:
-
-- **`skills/`** — flat `.md` files. Load into any AI assistant (ChatGPT, Gemini, Copilot, etc.) for interactive use.
-- **`.claude/skills/`** — extended versions with reference files (`field-definitions.md`, `source-priority.md`). Used by Claude Code interactively and loaded by `varys.py` for batch runs.
-
-A single edit to a skill propagates to both the interactive and batch interfaces. No duplication.
-
-### Progressive disclosure for reference files
-The skill instructs Claude to load `field-definitions.md` and `source-priority.md`
-*only when uncertain* about a specific field — not upfront every time. This avoids
-burning tokens on reference material the model already knows well for common fields
-(e.g., `founded_year`, `headquarters`) while still providing a safety net for
-ambiguous cases.
-
-### Null over low-confidence guess
-Every field returns `null` rather than a plausible-sounding but unverified value.
-A null is honest. A wrong value stored in a CSV gets treated as true, shared downstream,
-and is expensive to discover and correct later.
-
-### Flush after every entity
-Both output CSVs are flushed row-by-row immediately after each entity completes
-([varys.py:344-345](../varys.py#L344-L345)). A mid-run crash — network timeout,
-API error, Ctrl+C — preserves every result written so far. Without this, the output
-buffers wouldn't be written until the process exits cleanly.
-
-### Two output files (clean + sources)
-Keeping source URLs and confidence levels in a separate `_sources.csv` avoids polluting
-the clean output with 3× as many columns. Consumers who want to import or share results
-use the clean file. QA and verification use the sources file.
-
-### Concurrency default of 1
-Each entity runs a multi-round agentic loop: the model searches the web, accumulates tool results across rounds, and builds a growing context window. A single entity can send 10,000–20,000 input tokens in one request by round 2. Running multiple entities in parallel multiplies this simultaneously, which triggers 429 rate limit errors on lower usage tiers (30k input tokens/min). At high concurrency, a mis-specified input CSV could also exhaust significant API budget before you can interrupt the run.
-
-The default of 1 (sequential) is safe on any tier. Increase `--concurrency` based on your Anthropic rate limit tier — see the README for a tier-to-concurrency guidance table.
-
-### Sequential mode (`--concurrency 1`)
-When debugging or running on a trial API key with tight per-minute limits, sequential
-mode makes logs readable and prevents rate limits entirely. Rate limit errors are handled
-automatically with exponential backoff retries.
-
-### Hybrid batch + agentic follow-up
-
-Anthropic's Messages Batches API gives a 50% discount off regular API pricing by processing requests asynchronously. The hybrid mode uses this discount for a first pass over all entities, then spends full agentic cost only where the batch result was actually weak. The goal is cost savings without sacrificing answer quality — the 50% discount is the economic motivation, and the agentic follow-up is what ensures accuracy isn't traded away for it.
-
-`--batch` runs two phases automatically:
-
-1. **Batch phase** — all entities submitted to the Messages Batches API in one call with adaptive thinking enabled. Single-shot per entity, 50% cost discount, processed asynchronously.
-2. **Agentic follow-up** — after batch completes, the sources CSV is scanned for weak results. Entities where any field has an empty value or explicitly `"low"` confidence are re-run through the full agentic loop sequentially (concurrency=1).
-
-**Why "low" and empty, not "medium":**
-`"medium"` confidence means the model found a source but it wasn't authoritative (e.g., a news article rather than a company filing). Re-running agentically rarely upgrades medium → high — the source just doesn't exist at higher authority. Re-running costs as much as a fresh agentic run, so the bar is set at `"low"` (model flagged the source as weak) and `""` (no data found at all). Medium results are accepted as-is.
-
-**Why concurrency=1 for the follow-up:**
-The follow-up runs after a full batch, meaning your API token budget for the minute is already partially consumed. Sequential execution also avoids the compounding rate-limit risk of multiple large agentic contexts firing simultaneously (see rate limits note below).
-
-**Observed cost (10 AI scribe vendors, Mar 2026):**
-- Batch-only (no follow-up triggered): ~$0.20
-- Batch + full agentic follow-up for all 10: ~$2.00
-- The hybrid is only cost-effective when the follow-up subset is small — ideally 20–30% of entities, not all of them.
-
-### Rate limits on the 30,000 input tokens/minute plan
-
-Agentic runs accumulate large contexts. A single entity doing 2 rounds with multiple web search and web fetch results can easily send 10,000–20,000 input tokens in one request. At concurrency=5, five entities firing simultaneously can exceed 30k tokens in a burst, triggering 429 errors.
-
-**Recommended concurrency by tier:**
-
-| Plan limit | Safe concurrency | Notes |
-|---|---|---|
-| 30k input tokens/min | 1–2 | Even sequential can hit limits on heavy tool-use rounds; retry backoff handles it |
-| 100k input tokens/min | 3–5 | Default of 5 is comfortable |
-| 200k+ input tokens/min | 5–10 | Rarely rate-limited |
-
-The agentic follow-up in hybrid mode always uses concurrency=1 regardless of your `--concurrency` flag. This is intentional — by the time the follow-up runs, the batch phase has already consumed budget for the minute, and the follow-up entities tend to be obscure companies that generate more tool calls (more tokens) than average.
-
-Rate limit errors are handled automatically with exponential backoff (60s, then 120s). A run will complete even if it hits limits — it just takes longer.
-
-### `read_file` restricted to `.claude/skills/`
-The client-side `read_file` tool ([varys.py:165-184](../varys.py#L165-L184)) whitelists
-only the skills directory. The model can load its own reference documents but cannot
-read arbitrary filesystem paths — preventing accidental exposure of credentials, configs,
-or other local files if the model is ever prompted adversarially through a web page it fetches.
-
-### Cost gate before any API call
-The CLI always prints an estimate and requires confirmation before calling the API
-([varys.py:565-587](../varys.py#L565-L587)). This makes cost visible and intentional.
-`--yes` disables it for CI.
-
 ### Python as orchestrator, not an LLM
-
-The batch runner uses Python to orchestrate the research loop rather than an LLM
-orchestrator that spawns subagents per entity. This was a deliberate choice:
+The batch runner uses Python to orchestrate the research loop rather than an LLM orchestrator that spawns subagents per entity. This was a deliberate choice:
 
 **Why Python wins for this workload:**
 - **Zero orchestration cost** — Python loops are free; an LLM orchestrator burns tokens deciding what to do next
@@ -221,13 +125,67 @@ orchestrator that spawns subagents per entity. This was a deliberate choice:
 - The input is natural language rather than a structured list
 
 **The middle ground — two-phase pipeline:**
-The right answer is to split responsibility: a lightweight LLM discovery agent handles
-the open-ended "find me candidates" phase and produces a CSV; the Python orchestrator
-handles the deterministic "research each entity in depth" phase. This keeps Python's
-guarantees where they matter while adding LLM flexibility where it's needed.
-Both skills now implement this:
+The right answer is to split responsibility: a lightweight LLM discovery agent handles the open-ended "find me candidates" phase and produces a CSV; the Python orchestrator handles the deterministic "research each entity in depth" phase. This keeps Python's guarantees where they matter while adding LLM flexibility where it's needed. Both skills implement this:
 - Health systems: `discover health-system --state XX` seeds from CMS public data
 - Vendors: `discover vendor` (interactive query) seeds via the `discover-health-it-vendor` skill
+
+### One context window per company
+Each entity gets a fresh conversation with no shared history. This prevents context leakage — a company researched early in a batch can't "bleed" into a later one through accumulated context. It also means errors are isolated: one failed lookup doesn't corrupt the next.
+
+### Hybrid batch + agentic follow-up
+Anthropic's Messages Batches API gives a 50% discount off regular API pricing by processing requests asynchronously. The hybrid mode uses this discount for a first pass over all entities, then spends full agentic cost only where the batch result was actually weak. The goal is cost savings without sacrificing answer quality — the 50% discount is the economic motivation, and the agentic follow-up is what ensures accuracy isn't traded away for it.
+
+`--batch` runs two phases automatically:
+
+1. **Batch phase** — all entities submitted to the Messages Batches API in one call with adaptive thinking enabled. Single-shot per entity, 50% cost discount, processed asynchronously.
+2. **Agentic follow-up** — after batch completes, the sources CSV is scanned for weak results. Entities where any field has an empty value or explicitly `"low"` confidence are re-run through the full agentic loop sequentially (concurrency=1).
+
+**Why "low" and empty, not "medium":**
+`"medium"` confidence means the model found a source but it wasn't authoritative (e.g., a news article rather than a company filing). Re-running agentically rarely upgrades medium → high — the source just doesn't exist at higher authority. Re-running costs as much as a fresh agentic run, so the bar is set at `"low"` (model flagged the source as weak) and `""` (no data found at all). Medium results are accepted as-is.
+
+**Observed cost (10 AI scribe vendors, Mar 2026):**
+- Batch-only (no follow-up triggered): ~$0.20
+- Batch + full agentic follow-up for all 10: ~$2.00
+- The hybrid is only cost-effective when the follow-up subset is small — ideally 20–30% of entities, not all of them.
+
+### Null over low-confidence guess
+Every field returns `null` rather than a plausible-sounding but unverified value. A null is honest. A wrong value stored in a CSV gets treated as true, shared downstream, and is expensive to discover and correct later.
+
+### Skills are the source of truth — not Python
+Skill files define the prompt and output schema. There are two forms:
+
+- **`skills/`** — flat `.md` files. Load into any AI assistant (ChatGPT, Gemini, Copilot, etc.) for interactive use.
+- **`.claude/skills/`** — extended versions with reference files (`field-definitions.md`, `source-priority.md`). Used by Claude Code interactively and loaded by `varys.py` for batch runs.
+
+A single edit to a skill propagates to both the interactive and batch interfaces. No duplication.
+
+### Two output files (clean + sources)
+Keeping source URLs and confidence levels in a separate `_sources.csv` avoids polluting the clean output with 3× as many columns. Consumers who want to import or share results use the clean file. QA and verification use the sources file.
+
+### Progressive disclosure for reference files
+The skill instructs Claude to load `field-definitions.md` and `source-priority.md` *only when uncertain* about a specific field — not upfront every time. This avoids burning tokens on reference material the model already knows well for common fields (e.g., `founded_year`, `headquarters`) while still providing a safety net for ambiguous cases.
+
+### Concurrency and rate limits
+Each entity runs a multi-round agentic loop with a growing context window. A single entity can send 10,000–20,000 input tokens per request by round 2. Running multiple entities in parallel multiplies this simultaneously, triggering 429 rate limit errors on lower usage tiers. At high concurrency, a mis-specified input CSV could also exhaust significant API budget before you can interrupt the run.
+
+The default `--concurrency 1` (sequential) is safe on any tier. Increase it based on your Anthropic usage tier:
+
+| Plan limit | Recommended `--concurrency` |
+|---|---|
+| 30k input tokens/min | 1 — even sequential can hit limits on heavy searches; retry backoff handles it |
+| 100k input tokens/min | 3–5 |
+| 200k+ input tokens/min | 5–10 |
+
+Rate limit errors are retried automatically with exponential backoff (60s, then 120s). A run will always complete — it just takes longer at lower tiers. The agentic follow-up in hybrid mode always uses concurrency=1 regardless of your `--concurrency` flag — by the time it runs, the batch phase has already consumed token budget for the minute, and follow-up entities tend to be obscure companies that generate more tool calls.
+
+### Flush after every entity
+Both output CSVs are flushed row-by-row immediately after each entity completes. A mid-run crash — network timeout, API error, Ctrl+C — preserves every result written so far. Without this, the output buffers wouldn't be written until the process exits cleanly.
+
+### Cost gate before any API call
+The CLI always prints an estimate and requires confirmation before calling the API. This makes cost visible and intentional. `--yes` disables it for CI.
+
+### `read_file` restricted to `.claude/skills/`
+The client-side `read_file` tool whitelists only the skills directory. The model can load its own reference documents but cannot read arbitrary filesystem paths — preventing accidental exposure of credentials, configs, or other local files if the model is ever prompted adversarially through a web page it fetches.
 
 ---
 
