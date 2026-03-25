@@ -13,6 +13,7 @@ Two ways to use this tool:
 
 <img src="https://github.com/user-attachments/assets/42710642-6c8f-43dc-addc-522c7ae22aa3" width="600"/>
 
+
 **Batch processing (CLI)** — Run `varys.py` to process a CSV list end-to-end. Outputs clean values and source-cited results at any scale.
 
 <img src="https://github.com/user-attachments/assets/675a72fd-c36e-431c-af7f-de23efb6df98" width="600"/>
